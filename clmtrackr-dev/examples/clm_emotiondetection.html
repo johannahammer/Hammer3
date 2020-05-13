@@ -1,0 +1,418 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<title>A/EFFECT</title>
+		<meta charset="utf-8">
+		<link  rel="stylesheet" type="text/css" href="light.css">
+
+
+
+
+		<script>
+			// getUserMedia only works over https in Chrome 47+, so we redirect to https. Also notify user if running from file.
+			if (window.location.protocol == "file:") {
+				alert("You seem to be running this example directly from a file. Note that these examples only work when served from a server or localhost due to canvas cross-domain restrictions.");
+			} else if (window.location.hostname !== "localhost" && window.location.protocol !== "https:"){
+				window.location.protocol = "https";
+			}
+		</script>
+		<script type="text/javascript">
+
+			var _gaq = _gaq || [];
+			_gaq.push(['_setAccount', 'UA-32642923-1']);
+			_gaq.push(['_trackPageview']);
+
+			(function() {
+				var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+				ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+				var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+			})();
+
+		</script>
+	</head>
+	<body>
+		<script src="./js/libs/utils.js"></script>
+		<script src="../build/clmtrackr.js"></script>
+		<script src="../models/model_pca_20_svm.js"></script>
+		<script src="./js/libs/Stats.js"></script>
+		<script src="./js/libs/d3.min.js"></script>
+		<script src="./js/emotion_classifier.js"></script>
+		<script src="./js/emotionmodel.js"></script>
+		<nav class="mainnavigation">
+			<div id="right-menu-group">
+				<div id="instructions">
+					<p class="menu-item" id="instructions">Instructions</p>
+					<div class="menu-item-text" id="instructionsText">
+						<p>
+							Wait for the green outlines to map around your face. If the green face map is continuously jumping and not mapping on your face, try to get closer, or a little further away. Make sure your laptop is not exposed to any kind of flickering light and is positioned on a steady surface.  
+						</p>
+					</div>
+				</div>
+				<div id="About">
+					<p class="menu-item" id="about">About</p>
+					<div  class="menu-item-text" id="aboutText">
+						<p>
+							The choice of a typeface is dependant on overlying power structures that are in charge of communication of specific content, as well as its representation. Typefaces can suggest meaning and interpretation of content in multiple ways. I want to show how a typeface can change the meaning and associations to a specific content, moreover, I want to break up those power structures and reflect on the threshold between the instances: Reader and author; through a typeface itself. 
+
+Global crisis: Written information circulating in the digital landscape is influenced by content that causes strong emotional responses of the readership: Tragic news, government restrictions, or conspiracy theories. Humanity faces a moment of collective crisis where the affect to exposed content is higher and where humanity is in greater dialog with their emotions.
+
+My typeface is reflecting emotional discourse on displayed and presented contenct and reacts in visual appearance to the facial expression of the reader. It will function as a visualisation of affect through mediating a threshold inbetween the designer, the reader and the communicated content.
+
+						</p>
+					</div>
+				</div>
+			</div>
+		</nav>
+		<div id="content">
+			<h2>A/EFFECT</h2>
+			<!-- <p>This a test of emotion detection based on parameter output from <em>clmtrackr</em>.</p> -->
+			<div id="container">
+				<video id="videoel" width="400" height="300" preload="auto" loop playsinline autoplay>
+				</video>
+				<canvas id="overlay" width="400" height="300"></canvas>
+			</div>
+			<div id="controls">
+				<input class="btn" type="button" value="Video" onclick="startVideo()" id="startbutton"></input>
+			</div>
+	
+			<div id="emotion-text" ></div>
+			<input type="button" id="hide-camera">Hide Camera</input>
+			<a href="#" onclick="changeCSS('light.css', 0);">STYLE 1</a> 
+			<a href="#" onclick="changeCSS('dark.css', 0);">STYLE 2</a>
+	 
+
+			<!-- <h1 id="emotion-text" class="happy">happy</h1>
+			<h1 id="emotion-text" class="sad">sad</h1>
+			<h1 id="emotion-text" class="angry">angry</h1>
+			<h1 id="emotion-text" class="suprised">suprised</h1>
+			<div id="emotion_container">
+				<div id="emotion_icons">
+					<img class="emotion_icon" id="icon1" src="./media/icon_angry.png">
+					<img class="emotion_icon" id="icon2" src="./media/icon_sad.png">
+					<img class="emotion_icon" id="icon3" src="./media/icon_surprised.png">
+					<img class="emotion_icon" id="icon4" src="./media/icon_happy.png">
+				</div>
+				<div id='emotion_chart'></div>
+			</div> -->
+			
+			
+			<script>
+				var vid = document.getElementById('videoel');
+				var vid_width = vid.width;
+				var vid_height = vid.height;
+				var overlay = document.getElementById('overlay');
+				var overlayCC = overlay.getContext('2d');
+			
+				/*** change css file ******/
+				function changeCSS(cssFile, cssLinkIndex) {
+
+						var oldlink = document.getElementsByTagName("link").item(cssLinkIndex);
+
+						var newlink = document.createElement("link");
+						newlink.setAttribute("rel", "stylesheet");
+						newlink.setAttribute("type", "text/css");
+						newlink.setAttribute("href", cssFile);
+
+						document.getElementsByTagName("head").item(0).replaceChild(newlink, oldlink);
+				}	
+
+				/***** Navigation Menu *****/
+				/* Add click event */
+				var menuItems = document.getElementsByClassName("menu-item");
+				
+				var clickEvent = function() {
+					var menuItemText = this.nextElementSibling;
+					console.log(menuItemText);
+					if (window.getComputedStyle(menuItemText).display === 'block') {
+						hide(menuItemText);
+						return;
+					}
+
+					var thisElId = menuItemText.id;
+					console.log(thisElId)
+
+					show(menuItemText);	
+					hideOther(thisElId)
+				};
+				
+				var hideOther = function(arg) {
+					 if (arg == 'instructionsText') {
+						 console.log('clicked Instructions')
+					 } else {
+						console.log('clicked About')
+					 }
+					// console.log('2: ' + arg)
+
+				}
+
+				for (var i = 0; i < menuItems.length; i++) {
+					menuItems[i].addEventListener('click', clickEvent, false);
+				}
+
+				// Show an element
+				var show = function (elem) {
+					elem.style.display = 'block';
+				};
+				// Hide an element
+				var hide = function (elem) {
+					elem.style.display = 'none';
+				};
+
+/******* Hide Cam*****/
+				document.getElementById('hide-camera').onclick = () => {
+                    var container = document.getElementById('container');
+                    
+                    // If the container is already hidden
+                    if(container.classList.contains("hidden"))
+                    {
+                        container.classList.remove("hidden");
+                    }
+                    else
+                    {
+                        container.classList.add("hidden");
+                    }
+                }
+
+
+
+				/********** check and set up video/webcam **********/
+
+				function enablestart() {
+					var startbutton = document.getElementById('startbutton');
+					startbutton.value = "start";
+					startbutton.disabled = null;
+				}
+
+				function adjustVideoProportions() {
+					// resize overlay and video if proportions are different
+					// keep same height, just change width
+					var proportion = vid.videoWidth/vid.videoHeight;
+					vid_width = Math.round(vid_height * proportion);
+					vid.width = vid_width;
+					overlay.width = vid_width;
+				}
+
+				function gumSuccess( stream ) {
+					// add camera stream if getUserMedia succeeded
+
+					if ("srcObject" in vid) {
+						vid.srcObject = stream;
+					} else {
+						vid.src = (window.URL && window.URL.createObjectURL(stream));
+					}
+					vid.onloadedmetadata = function() {
+						adjustVideoProportions();
+						vid.play();
+					}
+					vid.onresize = function() {
+						adjustVideoProportions();
+						if (trackingStarted) {
+							ctrack.stop();
+							ctrack.reset();
+							ctrack.start(vid);
+						}
+					}
+					hideVidButton() 
+				}
+				var x = document.getElementById("myDIV");
+
+				function hideVidButton(x) {
+					if (x.style.display === "none") {
+						x.style.display = "block";
+					} else {
+						x.style.display = "none";
+					}
+				}
+
+				function gumFail() {
+					alert("This website need to fetch video from your webcam to perform all its functions. If you have a webcam, please make sure to accept when the browser asks for access to your webcam.");
+				}
+				function askCam(){
+					navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia || navigator.msGetUserMedia;
+					window.URL = window.URL || window.webkitURL || window.msURL || window.mozURL;
+
+					// check for camerasupport
+					if (navigator.mediaDevices) {
+						navigator.mediaDevices.getUserMedia({video : true}).then(gumSuccess).catch(gumFail);
+					} else if (navigator.getUserMedia) {
+						navigator.getUserMedia({video : true}, gumSuccess, gumFail);
+					} else {
+						alert("This demo depends on getUserMedia, which your browser does not seem to support. :(");
+					}	
+				}
+		
+				vid.addEventListener('canplay', enablestart, false);
+
+				/*********** setup of emotion detection *************/
+
+				// set eigenvector 9 and 11 to not be regularized. This is to better detect motion of the eyebrows
+				pModel.shapeModel.nonRegularizedVectors.push(9);
+				pModel.shapeModel.nonRegularizedVectors.push(11);
+
+				var ctrack = new clm.tracker({useWebGL : true});
+				ctrack.init(pModel);
+				var trackingStarted = false;
+
+				function startVideo() {
+					// start video
+					askCam();
+					vid.play();
+					// start tracking
+					ctrack.start(vid);
+					trackingStarted = true;
+					// start loop to draw face
+					drawLoop();
+				}
+
+				function drawLoop() {
+					requestAnimFrame(drawLoop);
+					overlayCC.clearRect(0, 0, vid_width, vid_height);
+					//psrElement.innerHTML = "score :" + ctrack.getScore().toFixed(4);
+					if (ctrack.getCurrentPosition()) {
+						ctrack.draw(overlay);
+					}
+					var cp = ctrack.getCurrentParameters();
+
+					var emotions = ec.meanPredict(cp);
+					if (emotions) {
+						var values = emotions.sort((a, b) => b.value - a.value);
+						var dominantEmotion = values[0];
+
+						
+
+// ... but that score could be low...
+						if(dominantEmotion.value > 0.5)
+                        {
+                            document.getElementById('emotion-text').className = dominantEmotion.emotion;
+                        }
+                        else
+                        {
+                            document.getElementById('emotion-text').className = '';
+						}
+						
+						document.getElementById('emotion-text').className = dominantEmotion.emotion;
+
+
+					}
+				}
+
+				delete emotionModel['disgusted'];
+				delete emotionModel['fear'];
+				delete emotionModel['surprised'];
+				var ec = new emotionClassifier();
+				ec.init(emotionModel);
+
+				// var emotionData = ec.getBlank();
+
+				// /************ d3 code for barchart *****************/
+
+				// var margin = {top : 20, right : 20, bottom : 10, left : 40},
+				// 	width = 400 - margin.left - margin.right,
+				// 	height = 100 - margin.top - margin.bottom;
+
+				// var barWidth = 30;
+
+				// var formatPercent = d3.format(".0%");
+
+				// var x = d3.scale.linear()
+				// 	.domain([0, ec.getEmotions().length]).range([margin.left, width+margin.left]);
+
+				// var y = d3.scale.linear()
+				// 	.domain([0,1]).range([0, height]);
+
+				// var svg = d3.select("#emotion_chart").append("svg")
+				// 	.attr("width", width + margin.left + margin.right)
+				// 	.attr("height", height + margin.top + margin.bottom)
+
+				// svg.selectAll("rect").
+				// 	data(emotionData).
+				// 	enter().
+				// 	append("svg:rect").
+				// 	attr("x", function(datum, index) { return x(index); }).
+				// 	attr("y", function(datum) { return height - y(datum.value); }).
+				// 	attr("height", function(datum) { return y(datum.value); }).
+				// 	attr("width", barWidth).
+				// 	attr("fill", "#2d578b");
+
+				// svg.selectAll("text.labels").
+				// 	data(emotionData).
+				// 	enter().
+				// 	append("svg:text").
+				// 	attr("x", function(datum, index) { return x(index) + barWidth; }).
+				// 	attr("y", function(datum) { return height - y(datum.value); }).
+				// 	attr("dx", -barWidth/2).
+				// 	attr("dy", "1.2em").
+				// 	attr("text-anchor", "middle").
+				// 	text(function(datum) { return datum.value;}).
+				// 	attr("fill", "white").
+				// 	attr("class", "labels");
+
+				// svg.selectAll("text.yAxis").
+				// 	data(emotionData).
+				// 	enter().append("svg:text").
+				// 	attr("x", function(datum, index) { return x(index) + barWidth; }).
+				// 	attr("y", height).
+				// 	attr("dx", -barWidth/2).
+				// 	attr("text-anchor", "middle").
+				// 	attr("style", "font-size: 12").
+				// 	text(function(datum) { return datum.emotion;}).
+				// 	attr("transform", "translate(0, 18)").
+				// 	attr("class", "yAxis");
+
+				// function updateData(data) {
+				// 	// update
+				// 	var rects = svg.selectAll("rect")
+				// 		.data(data)
+				// 		.attr("y", function(datum) { return height - y(datum.value); })
+				// 		.attr("height", function(datum) { return y(datum.value); });
+				// 	var texts = svg.selectAll("text.labels")
+				// 		.data(data)
+				// 		.attr("y", function(datum) { return height - y(datum.value); })
+				// 		.text(function(datum) { return datum.value.toFixed(1);});
+
+				// 	// enter
+				// 	rects.enter().append("svg:rect");
+				// 	texts.enter().append("svg:text");
+
+				// 	// exit
+				// 	rects.exit().remove();
+				// 	texts.exit().remove();
+				// }
+
+				// /******** stats ********/
+
+				// stats = new Stats();
+				// stats.domElement.style.position = 'absolute';
+				// stats.domElement.style.top = '0px';
+				// document.getElementById('container').appendChild( stats.domElement );
+
+				// // update stats on every iteration
+				// document.addEventListener('clmtrackrIteration', function(event) {
+				// 	stats.update();
+				// }, false);
+
+			</script>
+		</div>
+
+		<script>
+            var emotionText = document.getElementById("emotion-text");
+            var words = [
+                "HOME",     // 0    /   4 = 0 (0/4)
+                "REUNION",    // 1    /   4 = 0 (1/4)
+                "CONSPIRACY",     // 2    /   4 = 0 (2/4)
+                "COVID",  // 3    /   4 = 0 (3/4)
+                "LOVE"    // 4    /   4 = 1 (0/4)
+            ];
+            
+            var t = 0;
+            function changeText() {
+                emotionText.innerText = words[t % words.length];
+                t++;
+            }
+ 
+            setInterval(changeText, 3000);
+ 
+		</script>
+		
+	</body>
+</html>
