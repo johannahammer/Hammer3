@@ -289,8 +289,8 @@ My typeface is reflecting emotional discourse on displayed and presented contenc
                         {
                             document.getElementById('emotion-text').className = '';
 						}
-						
-						document.getElementById('emotion-text').className = dominantEmotion.emotion;
+					//by editing out the following line, there are no more transitions//	
+					//document.getElementById('emotion-text').className = dominantEmotion.emotion; 
 
 
 					}
@@ -410,7 +410,8 @@ My typeface is reflecting emotional discourse on displayed and presented contenc
                 t++;
             }
  
-            setInterval(changeText, 3000);
+            setInterval(changeText, 10000);
+			changeText();
  
 		</script>
 		
